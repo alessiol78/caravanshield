@@ -1,0 +1,56 @@
+#include <QCoreApplication>
+#include "mainthread.h"
+#ifdef __arm__
+#include "bcm2835/bcm2835.h"
+#endif
+#include <signal.h>
+#include <iostream>
+
+MainThread *gMainThrd = NULL;
+
+void signal_handler(int signum)
+{
+    std::cout << "signum:" << signum << std::endl;
+    if(signum==SIGSEGV)
+    {
+        std::cout << "segm.fault!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    qApp->quit();
+}
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+
+#ifdef __arm__
+    // Init Raspberry PI GPIO
+    if (!bcm2835_init())
+        return 1;
+#endif
+
+    // catch CTRL-C
+    struct sigaction term;
+    term.sa_handler = signal_handler;
+    sigemptyset(&term.sa_mask);
+    term.sa_flags = 0;
+    sigaction(SIGTERM, &term, NULL);
+    sigaction(SIGQUIT, &term, NULL);
+    sigaction(SIGINT, &term, NULL);
+    sigaction(SIGSEGV, &term, NULL);
+
+    MainThread thrd;
+    thrd.start();
+
+    gMainThrd = &thrd;
+
+    int rv = a.exec();
+
+    thrd.esci();
+    thrd.wait(15000);
+
+#ifdef __arm__
+    bcm2835_close();
+#endif
+    return rv;
+}

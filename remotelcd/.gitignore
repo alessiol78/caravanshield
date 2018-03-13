@@ -1,0 +1,9 @@
+*.o
+*.pro.*
+ui_*
+rcc_*
+moc_*
+*.autosave
+*.stash
+Makefile
+
