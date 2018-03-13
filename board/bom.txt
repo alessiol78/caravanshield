@@ -1,0 +1,33 @@
+Partlist exported from /home/aloviset/eagle/campershield/schema.sch at 2/6/18 5:23 PM
+
+Part Value           Device              Package            Description                                                   MF    MPN OC_FARNELL OC_MOUSER      OC_NEWARK SPICEMODEL SPICEPREFIX
+C1                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C2                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C3                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C4                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C5                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C6                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C7                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+C8                   CC0603              C0603              CAPACITOR, European symbol                                                                                  NONE       C          
+D1   Shottky 20A     ZENER-DIODEC1702-15 C1702-15           Z-Diode                                                                                                                           
+F1                   SHK20Q              SHK20Q             FUSE HOLDER 5 x 20 mm, SH contact, E1207 Buerklin 64G6061               unknown                   unknown                         
+K1   T9GS1L14-X      T9GS1L14-X          T9G-1              RELAY                                                                                                                             
+R1                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R2                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R3                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R4                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R5                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R6                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R7                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+R8                   RR0603              R0603              RESISTOR, European symbol                                                                                   NONE       R          
+T1                   -NPN-SOT23-EBC      SOT23-EBC          NPN Transistror                                                                                                                   
+U$1  RPI-ZERO        RPI-ZERO            RASPBERRYPI_V13_J8                                                                                                                                   
+U$2  ACS712          ACS712              SOIC8              Fully Integrated, Hall Effect-Based  Linear Current Sensor IC                                                                     
+U$3  MCP3424         MCP3424             SO14                                                                                                                                                 
+U$4  ACS712          ACS712              SOIC8              Fully Integrated, Hall Effect-Based  Linear Current Sensor IC                                                                     
+U$5  MCP3424         MCP3424             SO14                                                                                                                                                 
+X1   38700-7502      38700-7502          38700-7502         Barrier Blocks Molex serie 38700                                        unknown    538-38700-7502 unknown                         
+X2   38700-7502      38700-7502          38700-7502         Barrier Blocks Molex serie 38700                                        unknown    538-38700-7502 unknown                         
+X3   38700-7502      38700-7502          38700-7502         Barrier Blocks Molex serie 38700                                        unknown    538-38700-7502 unknown                         
+X4   38700-7502      38700-7502          38700-7502         Barrier Blocks Molex serie 38700                                        unknown    538-38700-7502 unknown                         
+X5   C-GRID-04-70543 C-GRID-04-70543     70543-04           CONNECTOR                                                     MOLEX     unknown                   unknown                         

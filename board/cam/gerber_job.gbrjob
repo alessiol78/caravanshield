@@ -1,0 +1,13 @@
+G04 Gerber job file.*
+%TF.FileFunction,JobInfo*%
+%TF.GenerationSoftware,Autodesk,EAGLE,8.6.0*%
+%TF.CreationDate,2018-02-22T08:32:46Z*%
+%TF.Part,Single*%
+%MOMM*%
+%TJ.B_Owner,Alessio Lovisetto <alessiol78@libero.it>*%
+%TJ.B_ID,schema*%
+%TJ.B_LayerNum,2*%
+%TJ.B_Thickness,1.570000*%
+%TJ.B_Size_X,100.000000*%
+%TJ.B_Size_Y,80.000000*%
+M02*
