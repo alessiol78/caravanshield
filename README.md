@@ -8,10 +8,10 @@ In the folder yoy can found schematic in PDF version, 3D-render for the PCB and 
 
 The firmware and software for Android is made with Qt5.9.
 
-In the folder [raspberry/](tree/master/raspberry/ubatmanager) you can found the firmware for Rapsberry Pi.
+In the folder [raspberry/](raspberry/ubatmanager) you can found the firmware for Rapsberry Pi.
 
 In the folder android/ you can found the source for the Android APK.
 
-In the folder [remotelcd/](tree/master/remotelcd) you can found the OledLCD emulation for developing the rapberry firmware on Linux PC (x86_64).
+In the folder [remotelcd/](remotelcd) you can found the OledLCD emulation for developing the rapberry firmware on Linux PC (x86_64).
 
 
