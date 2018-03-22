@@ -7,6 +7,7 @@
 #include "remoteframebuff.h"
 #include <QCoreApplication>
 #endif
+#include <QTime>
 
 #include <iostream>
 
@@ -18,6 +19,7 @@ static const int pin_btn2 = RPI_V3_GPIO_P1_40;
 DisplayThread::DisplayThread(unsigned short num_pages, QObject *parent)
     : QThread(parent)
 {
+    initdone = false;
     btstate = "--";
     exitloop = false;
     for(unsigned short i=0;i<num_pages;i++)
@@ -25,6 +27,26 @@ DisplayThread::DisplayThread(unsigned short num_pages, QObject *parent)
         pages.append(new Adafruit_GFX);
     }
 
+}
+
+bool DisplayThread::isInitialized()
+{
+    bool rv;
+    mtx.lock();
+    rv = initdone;
+    mtx.unlock();
+    return rv;
+}
+
+bool DisplayThread::waitForInit(int timeout)
+{
+    QTime tm;
+    tm.start();
+    if(timeout<=0) timeout = 1;
+    while (!isInitialized() && tm.elapsed()<timeout) {
+        usleep(1000);
+    }
+    return isInitialized();
 }
 
 void DisplayThread::esci()
@@ -39,6 +61,16 @@ void DisplayThread::setBTstate(const QString &state)
     mtx.lock();
     btstate = state;
     mtx.unlock();
+}
+
+QSize DisplayThread::displaySize()
+{
+    QSize sz;
+    if(pages.count()) {
+        sz.setWidth( pages.at(0)->width() );
+        sz.setHeight( pages.at(0)->height() );
+    }
+    return sz;
 }
 
 Adafruit_GFX *DisplayThread::page(int index)
@@ -61,6 +93,10 @@ void DisplayThread::run()
         std::cout << "DISPLAY init error!" << std::endl;
         return;
     }
+
+    mtx.lock();
+    initdone = true;
+    mtx.unlock();
 
     // build frame buffer pages
     foreach(Adafruit_GFX *page, pages)
@@ -111,19 +147,19 @@ void DisplayThread::run()
 
     int screen = 0;
     int button1 = 0;
+    int button1_state = 0;
     while(!exitloop)
     {
         mtx.lock();
 #ifdef __arm__
-        display.display(pages[screen++]); // refresh
+        display.display(pages[screen]); // refresh
 #elif defined(__x86_64__)
-        Adafruit_GFX *page = pages[screen++];
+        Adafruit_GFX *page = pages[screen];
         //page->setTextSize(10);
         //page->print("prova");
         remotefb.sendFB( page->frameBuffer(), page->frameBufferSize() );
 #endif
-        if(screen>=pages.count()) screen = 0;
-        mtx.unlock();
+//        mtx.unlock();
 
 #ifdef __arm__
         // READ button 1
@@ -138,18 +174,34 @@ void DisplayThread::run()
             // pressed button 1 => roll
             if(button1==0) {
                 button1 = 1;
-                std::cout << "BUTTON 1 => pressed";
-                continue;
             } else {
                 // wait release button
                 while (bcm2835_gpio_lev(pin_btn1)==LOW) {
                     usleep(50000);
                 }
                 button1 = 0;
-                std::cout << "BUTTON 1 => released";
             }
         }
+#else
+        button1 = remotefb.buttonA();
+        //button2 = remotefb.buttonB();
 #endif
-        sleep(5);
+//        mtx.lock();
+        if(button1 && button1_state==0) {
+            std::cout << "BUTTON 1 => pressed";
+            button1_state = 1;
+            screen++;
+            if(screen>=pages.count()) screen = 0;
+#ifndef __arm__
+            Adafruit_GFX *page = pages[screen];
+            remotefb.sendFB( page->frameBuffer(), page->frameBufferSize() );
+#endif
+        } else if(!button1 && button1_state) {
+            std::cout << "BUTTON 1 => released";
+            button1_state = 0;
+        }
+        mtx.unlock();
+
+        usleep(100000);
     }
 }

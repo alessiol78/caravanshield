@@ -16,11 +16,16 @@ static const int pin_relay = RPI_V3_GPIO_P1_29; // 5
 static const int pin_aux1 = RPI_V3_GPIO_P1_36;  // 16
 #endif
 
+#define POINT_FORMAT 1
+#define LINE_FORMAT  2
+
+#define GRAPH_FORMAT  LINE_FORMAT
+
 MainThread::MainThread(QObject *parent)
     : QThread(parent),
       bluetooth(new BTmanager),
 //      #ifdef __arm__
-      dthrd(new DisplayThread(2)),
+      dthrd(new DisplayThread(4)),
 //      #else
 //      dthrd(new QThread),
 //      #endif
@@ -87,6 +92,17 @@ void MainThread::run()
     bcm2835_gpio_fsel(pin_relay,BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(pin_aux1,BCM2835_GPIO_FSEL_OUTP);
 #endif
+
+    reinterpret_cast<DisplayThread*>(dthrd)->waitForInit();
+
+    QList<int> graph_i, graph_v;
+    QSize sizefb = reinterpret_cast<DisplayThread*>(dthrd)->displaySize();
+    if(sizefb.isValid()) {
+        qDebug("size: %dx%d",sizefb.width(),sizefb.height());
+        for(int i=0;i<sizefb.width()-8;i++)
+            { graph_i.append(30); graph_v.append(60); }
+    }
+
     while(!exitloop)
     {
         const int NUM_CHANNELS = 8;
@@ -167,6 +183,15 @@ void MainThread::run()
             bluetooth->updateMeasures(&gm);
         }
 
+        if(graph_i.count()) {
+            graph_i.push_back( qBound(0,30 - int(gm.i_alim),60) );
+            graph_i.pop_front();
+        }
+        if(graph_v.count()) {
+            graph_v.push_back( qBound(0,60 - int(gm.v_alim * 3.0f),60) );
+            graph_v.pop_front();
+        }
+
 #if 1 //def __arm__
         DisplayThread *display = (DisplayThread*)dthrd;
         int n = 0;
@@ -180,16 +205,81 @@ void MainThread::run()
         }
         if(display->page(++n)) {
             display->page(n)->clearDisplay();
-            display->page(n)->setCursor(0,0);
-            display->page(n)->printf( " V bat: %02.1f\n"
-                                      " V sol: %02.1f\n"
-                                      "V alim: %02.1f\n"
-                                      "--------------\n"
-                                      "I alim: %01.2f"
-                                      ,gm.v_bat_serv
-                                      ,gm.v_out_sol
-                                      ,gm.v_alim
-                                      ,gm.i_alim);
+            // riga alta
+            display->page(n)->drawRoundRect(2,1,60,30,2,1);
+            display->page(n)->drawRoundRect(65,1,60,30,2,1);
+            display->page(n)->setTextSize(1);
+            display->page(n)->setCursor(10,21);
+            display->page(n)->printf( " V bat" );
+            display->page(n)->setCursor(75,21);
+            display->page(n)->printf( " V sol" );
+            display->page(n)->setTextSize(2);
+            display->page(n)->setCursor(8+(gm.v_bat_serv<10.0 ? 7 : 0),3);
+            display->page(n)->printf("%3.1f",gm.v_bat_serv);
+            display->page(n)->setCursor(72+(gm.v_out_sol<10.0 ? 7 : 0),3);
+            display->page(n)->printf("%3.1f",gm.v_out_sol);
+            // riga bassa
+            display->page(n)->drawRoundRect(2,33,60,30,2,1);
+            display->page(n)->drawRoundRect(65,33,60,30,2,1);
+            display->page(n)->setTextSize(1);
+            display->page(n)->setCursor(12,53);
+            display->page(n)->printf( "V alim" );
+            display->page(n)->setCursor(77,53);
+            display->page(n)->printf( "I alim" );
+            display->page(n)->setTextSize(2);
+            display->page(n)->setCursor(8+(gm.v_alim<10.0 ? 7 : 0),35);
+            display->page(n)->printf("%3.1f",gm.v_alim);
+            display->page(n)->setCursor(66+(gm.i_alim>0 ? 6 : 0)
+                                        +(gm.i_alim<=10.0 ? 7 : 0)
+                                        +(gm.i_alim<=-10.0 ? 4 : 0),35);
+            if(gm.i_alim <= -10.0) {
+                display->page(n)->printf("%3.0f",gm.i_alim);
+            } else {
+                display->page(n)->printf("%3.1f",gm.i_alim);
+            }
+            display->page(n)->drawCircle(63,31,8,1);
+            display->page(n)->fillCircle(63,31,7,0);
+            if(out_relay) {
+                display->page(n)->fillCircle(63,31,5,1);
+            }
+        }
+        if(display->page(++n)) {
+            Adafruit_GFX *fb = display->page(n);
+            fb->clearDisplay();
+            fb->drawLine(4,4,4,60,1);
+            fb->drawLine(4,60,fb->width()-4,60,1);
+            for(int j=1;j<graph_i.count();j++) {
+#if GRAPH_FORMAT == POINT_FORMAT
+                fb->drawPixel(4+j, 4+graph_i.at(j), 1);
+#elif GRAPH_FORMAT == LINE_FORMAT
+                fb->drawLine(3+j,graph_i.at(j-1),
+                             4+j,graph_i.at(j), 1);
+#else
+#error graph format unknown
+#endif
+            }
+            fb->fillRect(120,5,8,5,0);
+            fb->setCursor(120,4);
+            fb->print("I");
+        }
+        if(display->page(++n)) {
+            Adafruit_GFX *fb = display->page(n);
+            fb->clearDisplay();
+            fb->drawLine(4,4,4,60,1);
+            fb->drawLine(4,60,fb->width()-4,60,1);
+            for(int j=1;j<graph_v.count();j++) {
+#if GRAPH_FORMAT == POINT_FORMAT
+                fb->drawPixel(4+j, 4+graph_v.at(j), 1);
+#elif GRAPH_FORMAT == LINE_FORMAT
+                fb->drawLine(3+j,graph_v.at(j-1),
+                             4+j,graph_v.at(j), 1);
+#else
+#error graph format unknown
+#endif
+            }
+            fb->fillRect(120,5,8,5,0);
+            fb->setCursor(120,4);
+            fb->print("V");
         }
 #endif
         mtx.unlock();

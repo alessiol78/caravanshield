@@ -13,17 +13,29 @@
 #include <iostream>
 
 BTmanager::BTmanager(QObject *parent)
-  : QObject(parent)
+  : QObject(parent), localName("")
 {
 
     localAdapters = QBluetoothLocalDevice::allDevices();
 
-    server = new BluetoothServer(this);
-    connect(server, SIGNAL(clientConnected(QString)), this, SLOT(clientConnected(QString)));
-    connect(server, SIGNAL(clientDisconnected(QString)), this, SLOT(clientDisconnected(QString)));
-    connect(server, SIGNAL(messageReceived(QString,QString)),
-            this, SLOT(receiveMessage(QString,QString)));
-    connect(this, SIGNAL(sendMessage(QString)), server, SLOT(sendMessage(QString)));
+    if(localAdapters.isEmpty()) return;
+
+    if(QBluetoothDeviceInfo( localAdapters.first().address() )\
+            .coreConfigurations().testFlag(QBluetoothDeviceInfo::LowEnergyCoreConfiguration))
+    {
+        qDebug("use BLE device framework");
+    }
+    else
+    {
+        qWarning("NO BLE support, use standard bluetooth rfcomm service");
+
+        server = new BluetoothServer(this);
+        connect(server, SIGNAL(clientConnected(QString)), this, SLOT(clientConnected(QString)));
+        connect(server, SIGNAL(clientDisconnected(QString)), this, SLOT(clientDisconnected(QString)));
+        connect(server, SIGNAL(messageReceived(QString,QString)),
+                this, SLOT(receiveMessage(QString,QString)));
+        connect(this, SIGNAL(sendMessage(QString)), server, SLOT(sendMessage(QString)));
+    }
 
     localName = QBluetoothLocalDevice().name();
 }

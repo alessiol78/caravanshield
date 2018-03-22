@@ -6,6 +6,8 @@ RemoteFrameBuff::RemoteFrameBuff(const QString &remote_ip, int remote_port)
 {
     rem_ip = remote_ip;
     rem_port = remote_port;
+    btn_a_down = false;
+    btn_b_down = false;
 }
 
 bool RemoteFrameBuff::init()
@@ -28,9 +30,28 @@ void RemoteFrameBuff::sendFB(const uint8_t *data, const int size)
     bsize[0] = (qb.size() >> 8) &0xff;
     bsize[1] = qb.size() & 0xff;
     qb.prepend((const char*)bsize,2);
-    qDebug( "%d from %d", qb.size(), size );
+//    qDebug( "%d from %d", qb.size(), size );
     sock.write(qb);
     if(!sock.waitForBytesWritten(3000)) return;
+    if( sock.waitForReadyRead(500) )
+    {
+        QByteArray resp = sock.readAll();
+//        qDebug( "rx: %s", resp.constData() );
+        if(resp.size()==4) {
+            btn_a_down = resp.at(1)=='1' ? true : false;
+            btn_b_down = resp.at(3)=='1' ? true : false;
+        }
+    }
     sock.disconnectFromHost();
-    sock.waitForDisconnected(3000);
+//    sock.waitForDisconnected(3000);
+}
+
+int RemoteFrameBuff::buttonA()
+{
+    return btn_a_down ? 1 : 0;
+}
+
+int RemoteFrameBuff::buttonB()
+{
+    return btn_b_down ? 1 : 0;
 }
