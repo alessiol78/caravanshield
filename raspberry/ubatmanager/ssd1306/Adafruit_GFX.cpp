@@ -28,6 +28,7 @@
 extern "C" {
 #include "glcdfont.c"
 }
+#include <iostream>
 
 #define BLACK 0
 #define WHITE 1
@@ -245,7 +246,7 @@ void Adafruit_GFX::drawPixel(int16_t x, int16_t y, uint16_t color)
     uint8_t c;
 
     if (!framebuff) {
-        printf("ERROR no framebuff initialized!");
+        //std::cout << "ERROR no framebuff initialized!" << std::endl;
         return;
     }
     if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))

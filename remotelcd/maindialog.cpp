@@ -54,12 +54,18 @@ void MainDialog::receiveFB()
                 this,SLOT(readyReadFB()));
         connect(sock,SIGNAL(disconnected()),
                 this,SLOT(endReceive()));
+        QByteArray qb;
+        qb.append('A');
+        qb.append(ui->toolButton_A->isDown()?'1':'0');
+        qb.append('B');
+        qb.append(ui->toolButton_B->isDown()?'1':'0');
+        sock->write(qb);
     }
 }
 
 void MainDialog::readyReadFB()
 {
-    std::cout << "receive FB..." << std::endl;
+//    std::cout << "receive FB..." << std::endl;
     buff += sock->readAll();
 }
 
@@ -67,14 +73,14 @@ void MainDialog::endReceive()
 {
     if(buff.isEmpty()) return;
     buff += sock->readAll();
-    std::cout << "buff size: " << buff.size() << std::endl;
+//    std::cout << "buff size: " << buff.size() << std::endl;
     int size = buff[0]<<8 | buff[1];
     if(size!=(buff.size()-2)) {
         std::cout << "incomplete buffer, received size: " << size << std::endl;
         return;
     }
     QByteArray data = QByteArray::fromBase64(buff.mid(2));
-    std::cout << "data size: " << data.size() << std::endl;
+//    std::cout << "data size: " << data.size() << std::endl;
     pix = QPixmap(128,64);
 #if 0
     QImage img((uchar*)data.data(),64,128,QImage::Format_Mono);

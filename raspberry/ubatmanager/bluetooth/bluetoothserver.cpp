@@ -2,12 +2,14 @@
 #include <qbluetoothserver.h>
 #include <qbluetoothsocket.h>
 #include <qbluetoothlocaldevice.h>
+#include <qbluetoothdeviceinfo.h>
 
 const QLatin1String serviceUuid("fa87c0d0-afac-11de-8a39-0800200c9a66");
 
 BluetoothServer::BluetoothServer(QObject *parent)
     : QObject(parent), rfcommServer(0), running(false)
 {
+
 }
 
 BluetoothServer::~BluetoothServer()
@@ -66,6 +68,8 @@ bool BluetoothServer::startServer(const QBluetoothAddress& localAdapter)
 
     // register service
     serviceInfo.registerService(localAdapter);
+
+    qDebug() << "ble:" << serviceInfo.device().coreConfigurations().testFlag(QBluetoothDeviceInfo::LowEnergyCoreConfiguration);
 
     running = true;
     return true;

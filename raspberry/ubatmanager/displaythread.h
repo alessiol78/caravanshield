@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QMutex>
 #include <QList>
+#include <QSize>
 #include "ssd1306/Adafruit_GFX.h"
 
 class DisplayThread : public QThread
@@ -13,9 +14,12 @@ class DisplayThread : public QThread
 
 public:
     explicit DisplayThread(unsigned short num_pages, QObject *parent = 0);
+    bool waitForInit(int timeout = 3000);
+    bool isInitialized();
     void setBTstate(const QString &state);
     void esci();
     Adafruit_GFX *page(int index);
+    QSize displaySize();
 
 protected:
     void run();
@@ -25,6 +29,7 @@ private:
     QMutex mtx;
     QString btstate;
     bool exitloop;
+    bool initdone;
 };
 
 #endif // DISPLAYTHREAD_H

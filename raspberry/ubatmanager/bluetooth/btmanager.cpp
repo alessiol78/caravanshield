@@ -6,24 +6,103 @@
 #include <qbluetoothservicediscoveryagent.h>
 #include <qbluetoothdeviceinfo.h>
 #include <qbluetoothlocaldevice.h>
-
+#include <qbluetoothhostinfo.h>
+#include <qlowenergyadvertisingparameters.h>
+#include <qlowenergycharacteristic.h>
+#include <qlowenergydescriptordata.h>
+#include <qlowenergyservice.h>
 #include <QJsonObject>
 #include <QJsonDocument>
-
+#include <QTimer>
 #include <iostream>
+#include <QDataStream>
 
-BTmanager::BTmanager(QObject *parent)
-  : QObject(parent)
+enum CharacteristicPresentationFormat {
+CharFormat_Boolean = 1,
+CharFormat_unsigned_2_bit_integer,
+CharFormat_unsigned_4_bit_integer,
+CharFormat_unsigned_8_bit_integer,
+CharFormat_unsigned_12_bit_integer,
+CharFormat_unsigned_16_bit_integer,
+CharFormat_unsigned_24_bit_integer,
+CharFormat_unsigned_32_bit_integer,
+CharFormat_unsigned_48_bit_integer,
+CharFormat_unsigned_64_bit_integer,
+CharFormat_unsigned_128_bit_integer,
+CharFormat_signed_8_bit_integer,
+CharFormat_signed_12_bit_integer,
+CharFormat_signed_16_bit_integer,
+CharFormat_signed_24_bit_integer,
+CharFormat_signed_32_bit_integer,
+CharFormat_signed_48_bit_integer,
+CharFormat_signed_64_bit_integer,
+CharFormat_signed_128_bit_integer,
+CharFormat_IEEE_754_32_bit_floating_point,
+CharFormat_IEEE_754_64_bit_floating_point,
+CharFormat_IEEE_11073_16_bit_SFLOAT,
+CharFormat_IEEE_11073_32_bit_FLOAT,
+CharFormat_IEEE_20601_format,
+CharFormat_UTF_8_string,
+CharFormat_UTF_16_string,
+CharFormat_Opaque_Structure
+};
+
+BTmanager::BTmanager(bool ble, QObject *parent)
+  : QObject(parent), localName(""), hasble(ble)
 {
 
     localAdapters = QBluetoothLocalDevice::allDevices();
 
-    server = new BluetoothServer(this);
-    connect(server, SIGNAL(clientConnected(QString)), this, SLOT(clientConnected(QString)));
-    connect(server, SIGNAL(clientDisconnected(QString)), this, SLOT(clientDisconnected(QString)));
-    connect(server, SIGNAL(messageReceived(QString,QString)),
-            this, SLOT(receiveMessage(QString,QString)));
-    connect(this, SIGNAL(sendMessage(QString)), server, SLOT(sendMessage(QString)));
+    if(localAdapters.isEmpty()) return;
+
+    QBluetoothDeviceInfo di;
+    qDebug() << "coreConfigurations:" << di.coreConfigurations();
+
+    QStringList l;
+    foreach (QBluetoothHostInfo adbt, localAdapters) {
+        l << adbt.address().toString();
+    }
+    qDebug() << "BT adapters:" << l;
+
+    if(ble)
+    {
+        qDebug("use BLE device framework");
+
+        // Advertising Data
+        advertisingData.setDiscoverability(QLowEnergyAdvertisingData::DiscoverabilityGeneral);
+        advertisingData.setIncludePowerLevel(true);
+        advertisingData.setLocalName("uBTserver");
+        advertisingData.setServices(QList<QBluetoothUuid>() << QBluetoothUuid::GenericAttribute);
+
+        // Service Data
+        serviceData.setType(QLowEnergyServiceData::ServiceTypePrimary);
+        serviceData.setUuid(QBluetoothUuid::GenericAttribute);
+
+        short uuid = 0x4001;
+        serviceData.addCharacteristic(createCharacteristic("Vbat",uuid++,CharFloat,0.0f));
+        serviceData.addCharacteristic(createCharacteristic("Vsol",uuid++,CharFloat,0.0f));
+        serviceData.addCharacteristic(createCharacteristic("Valim",uuid++,CharFloat,0.0f));
+        serviceData.addCharacteristic(createCharacteristic("Ialim",uuid++,CharFloat,0.0f));
+        serviceData.addCharacteristic(createCharacteristic("Imotor",uuid++,CharFloat,0.0f));
+        serviceData.addCharacteristic(createCharacteristic("ntc1",uuid++,CharFloat,-273.0f));
+        serviceData.addCharacteristic(createCharacteristic("ntc2",uuid++,CharFloat,-273.0f));
+
+        serviceData.addCharacteristic(createCharacteristic("conf_adc",uuid++,CharConfAdc,QVariant::Invalid));
+        serviceData.addCharacteristic(createCharacteristic("conf_ntc1",uuid++,CharConfNtc,QVariant::Invalid));
+        serviceData.addCharacteristic(createCharacteristic("conf_ntc2",uuid++,CharConfNtc,QVariant::Invalid));
+        serviceData.addCharacteristic(createCharacteristic("conf_thr",uuid++,CharConfThr,QVariant::Invalid));
+    }
+    else
+    {
+        qWarning("NO BLE support, use standard bluetooth rfcomm service");
+
+        server = new BluetoothServer(this);
+        connect(server, SIGNAL(clientConnected(QString)), this, SLOT(clientConnected(QString)));
+        connect(server, SIGNAL(clientDisconnected(QString)), this, SLOT(clientDisconnected(QString)));
+        connect(server, SIGNAL(messageReceived(QString,QString)),
+                this, SLOT(receiveMessage(QString,QString)));
+        connect(this, SIGNAL(sendMessage(QString)), server, SLOT(sendMessage(QString)));
+    }
 
     localName = QBluetoothLocalDevice().name();
 }
@@ -33,18 +112,228 @@ BTmanager::~BTmanager()
     delete server;
 }
 
+QLowEnergyCharacteristicData BTmanager::createCharacteristic(const QString &name, const short uuid, CharacteristicType typeval, const QVariant &value)
+{
+    uuidMeasures[name] = (QBluetoothUuid::CharacteristicType)uuid;
+
+    // Characteristic Data
+    QLowEnergyCharacteristicData charData;
+    QLowEnergyDescriptorData clientFormat;
+    QLowEnergyDescriptorData clientConfig(QBluetoothUuid::ClientCharacteristicConfiguration,
+                                                QByteArray(2, 0));
+    charData.setUuid(QBluetoothUuid( uuidMeasures[name] ));
+    if(typeval==CharFloat)
+    {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << (float)value.toDouble();
+        charData.setProperties(QLowEnergyCharacteristic::Notify);
+        charData.setValue(qbval);
+        QByteArray qb(7,0);
+        qb[0] = CharFormat_IEEE_11073_32_bit_FLOAT;
+        qb[4] = 1; //Bluetooth SIG Assigned Numbers
+        clientFormat = QLowEnergyDescriptorData(QBluetoothUuid::CharacteristicPresentationFormat, qb);
+        clientFormat.setWritePermissions(false);
+        // enable notity in config
+        qb.clear();
+        QDataStream c(&qb,QIODevice::WriteOnly);
+        c << (unsigned short)1; // enable notify
+        clientConfig.setValue( qb );
+    }
+    else if(typeval==CharTemp)
+    {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << (float)value.toDouble();
+        qbval.prepend((char)0x00); // Temperature Measurement Value (Celsius)
+        charData.setProperties(QLowEnergyCharacteristic::Notify);
+        charData.setValue(qbval);
+        // enable notity in config
+        QByteArray qb;
+        QDataStream c(&qb,QIODevice::WriteOnly);
+        c << (unsigned short)1; // enable notify
+        clientConfig.setValue( qb );
+    }
+    else if(typeval==CharConfAdc)
+    {
+        QByteArray qbval(5*sizeof(float),0);
+        charData.setProperties(QLowEnergyCharacteristic::Read | QLowEnergyCharacteristic::Write);
+        charData.setValue(qbval);
+    }
+    else if(typeval==CharConfNtc)
+    {
+        QByteArray qbval(4*sizeof(float),0);
+        charData.setProperties(QLowEnergyCharacteristic::Read | QLowEnergyCharacteristic::Write);
+        charData.setValue(qbval);
+    }
+    else if(typeval==CharConfThr)
+    {
+        QByteArray qbval(6*sizeof(float),0);
+        charData.setProperties(QLowEnergyCharacteristic::Read | QLowEnergyCharacteristic::Write);
+        charData.setValue(qbval);
+    }
+    QLowEnergyDescriptorData clientDescript(QBluetoothUuid::CharacteristicUserDescription,
+                                            qPrintable(name));
+    clientDescript.setWritePermissions(false);
+    clientConfig.setWritePermissions(false);
+    charData.addDescriptor(clientConfig);
+    charData.addDescriptor(clientDescript);
+    if(clientFormat.isValid()) charData.addDescriptor(clientFormat);
+    return charData;
+}
+
 bool BTmanager::start()
 {
+    if(hasble)
+    {
+        // Start Advertising
+        leController.reset(QLowEnergyController::createPeripheral());
+        qDebug() << "use:" << leController->localAddress().toString();
+        service.reset(leController->addService(serviceData)); // primary service
+        leController->startAdvertising(QLowEnergyAdvertisingParameters(), advertisingData,
+                                       advertisingData);
+
+        // check error
+        if(leController.data()->error()) {
+            qDebug() << "leController:" << leController.data()->errorString();
+            return false;
+        }
+        connect(service.data(),SIGNAL(characteristicWritten(QLowEnergyCharacteristic,QByteArray)),
+                this,SLOT(characteristicChanged(QLowEnergyCharacteristic,QByteArray)));
+        connect(leController.data(), SIGNAL(disconnected()), this, SLOT(reconnect()));
+        QTimer *tmr = new QTimer;
+        connect(tmr,SIGNAL(timeout()),this,SLOT(refreshLE()));
+        tmr->start(600);
+        return true;
+    }
     return server->startServer();
+}
+
+void BTmanager::reconnect()
+{
+    leController->startAdvertising(QLowEnergyAdvertisingParameters(), advertisingData,
+                                   advertisingData);
+}
+
+void BTmanager::refreshLE()
+{
+    QLowEnergyCharacteristic characteristic;
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["Vbat"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.v_bat_serv; service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["Valim"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.v_alim; service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["Vsol"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.v_out_sol; service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["Ialim"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.i_alim; service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["Imotor"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.i_motor; service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["ntc1"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.ntc_1; service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["ntc2"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << gm.ntc_2; service->writeCharacteristic(characteristic,qbval);
+    }
+}
+
+void BTmanager::characteristicChanged(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue)
+{
+    QString name = uuidMeasures.key( (QBluetoothUuid::CharacteristicType)
+                                     characteristic.uuid().toUInt16() );
+    if( name.isEmpty() ) return;
+    QByteArray qbval = newValue;
+    if(name=="conf_adc") {
+        QDataStream v(&qbval,QIODevice::ReadOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        mtx.lock();
+        v >> conf.a_ialim;
+        v >> conf.a_imotor;
+        v >> conf.a_valim;
+        v >> conf.a_vbatsrv;
+        v >> conf.a_voutsol;
+        mtx.unlock();
+    }
+    else if(name=="conf_ntc1") {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::ReadOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        mtx.lock();
+        v >> conf.ntc1_a0;
+        v >> conf.ntc1_a1;
+        v >> conf.ntc1_a2;
+        v >> conf.ntc1_a3;
+        mtx.unlock();
+    }
+    else if(name=="conf_ntc2") {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::ReadOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        mtx.lock();
+        v >> conf.ntc2_a0;
+        v >> conf.ntc2_a1;
+        v >> conf.ntc2_a2;
+        v >> conf.ntc2_a3;
+        mtx.unlock();
+    }
+    else if(name=="conf_thr") {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::ReadOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        mtx.lock();
+        v >> conf.thr_valim_h;
+        v >> conf.thr_valim_l;
+        v >> conf.thr_vbat_h;
+        v >> conf.thr_vbat_l;
+        v >> conf.thr_vsol_h;
+        v >> conf.thr_vsol_l;
+        mtx.unlock();
+    }
 }
 
 void BTmanager::stop()
 {
+    if(hasble) return;
     server->stopServer();
 }
 
 bool BTmanager::isRunning()
 {
+    if(hasble) return true;
     return server->isRunning();
 }
 
@@ -76,6 +365,55 @@ void BTmanager::updateConf(const ConfMeasures &cm)
     mtx.lock();
     conf = cm;
     mtx.unlock();
+    QLowEnergyCharacteristic characteristic;
+    if(service.isNull()) return;
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["conf_adc"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << cm.a_ialim;
+        v << cm.a_imotor;
+        v << cm.a_valim;
+        v << cm.a_vbatsrv;
+        v << cm.a_voutsol;
+        service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["conf_ntc1"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << cm.ntc1_a0;
+        v << cm.ntc1_a1;
+        v << cm.ntc1_a2;
+        v << cm.ntc1_a3;
+        service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["conf_ntc2"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << cm.ntc2_a0;
+        v << cm.ntc2_a1;
+        v << cm.ntc2_a2;
+        v << cm.ntc2_a3;
+        service->writeCharacteristic(characteristic,qbval);
+    }
+    characteristic = service->characteristic(QBluetoothUuid( uuidMeasures["conf_thr"] ));
+    if(characteristic.isValid()) {
+        QByteArray qbval;
+        QDataStream v(&qbval,QIODevice::WriteOnly);
+        v.setFloatingPointPrecision(QDataStream::SinglePrecision);
+        v << cm.thr_valim_h;
+        v << cm.thr_valim_l;
+        v << cm.thr_vbat_h;
+        v << cm.thr_vbat_l;
+        v << cm.thr_vsol_h;
+        v << cm.thr_vsol_l;
+        service->writeCharacteristic(characteristic,qbval);
+    }
 }
 
 void BTmanager::receiveMessage(const QString &sender, const QString &message)
