@@ -135,11 +135,6 @@ QLowEnergyCharacteristicData BTmanager::createCharacteristic(const QString &name
         qb[4] = 1; //Bluetooth SIG Assigned Numbers
         clientFormat = QLowEnergyDescriptorData(QBluetoothUuid::CharacteristicPresentationFormat, qb);
         clientFormat.setWritePermissions(false);
-        // enable notity in config
-        qb.clear();
-        QDataStream c(&qb,QIODevice::WriteOnly);
-        c << (unsigned short)1; // enable notify
-        clientConfig.setValue( qb );
     }
     else if(typeval==CharTemp)
     {
@@ -150,11 +145,6 @@ QLowEnergyCharacteristicData BTmanager::createCharacteristic(const QString &name
         qbval.prepend((char)0x00); // Temperature Measurement Value (Celsius)
         charData.setProperties(QLowEnergyCharacteristic::Notify);
         charData.setValue(qbval);
-        // enable notity in config
-        QByteArray qb;
-        QDataStream c(&qb,QIODevice::WriteOnly);
-        c << (unsigned short)1; // enable notify
-        clientConfig.setValue( qb );
     }
     else if(typeval==CharConfAdc)
     {
@@ -177,7 +167,7 @@ QLowEnergyCharacteristicData BTmanager::createCharacteristic(const QString &name
     QLowEnergyDescriptorData clientDescript(QBluetoothUuid::CharacteristicUserDescription,
                                             qPrintable(name));
     clientDescript.setWritePermissions(false);
-    clientConfig.setWritePermissions(false);
+    clientConfig.setWritePermissions(true);
     charData.addDescriptor(clientConfig);
     charData.addDescriptor(clientDescript);
     if(clientFormat.isValid()) charData.addDescriptor(clientFormat);
