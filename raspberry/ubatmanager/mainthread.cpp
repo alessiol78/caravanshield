@@ -105,7 +105,6 @@ void MainThread::run()
             { graph_i.append(30); graph_v.append(60); }
     }
 
-
     while(!exitloop)
     {
         const int NUM_CHANNELS = 8;
