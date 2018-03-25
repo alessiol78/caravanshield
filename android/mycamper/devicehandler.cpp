@@ -48,7 +48,7 @@
 **
 ****************************************************************************/
 
-#include "heartrate-global.h"
+#include "mycamper-global.h"
 #include "devicehandler.h"
 #include "deviceinfo.h"
 #include <QtEndian>
@@ -83,6 +83,18 @@ DeviceHandler::AddressType DeviceHandler::addressType() const
         return DeviceHandler::AddressType::RandomAddress;
 
     return DeviceHandler::AddressType::PublicAddress;
+}
+
+void DeviceHandler::setConfig(ConfMeasures new_conf)
+{
+    conf = new_conf;
+    emit configChanged();
+}
+
+ConfMeasures DeviceHandler::config() const
+{
+    ConfMeasures rv = conf;
+    return rv;
 }
 
 void DeviceHandler::setDevice(DeviceInfo *device)

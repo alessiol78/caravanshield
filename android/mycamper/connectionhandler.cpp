@@ -48,7 +48,7 @@
 **
 ****************************************************************************/
 
-#include "heartrate-global.h"
+#include "mycamper-global.h"
 #include "connectionhandler.h"
 #include <QtBluetooth/qtbluetooth-config.h>
 

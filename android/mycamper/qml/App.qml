@@ -85,7 +85,9 @@ Item {
         currentIndex: __currentIndex
 
         onTitleClicked: {
-            if (index < __currentIndex)
+            if (index == 2)
+                showPage("Stats.qml")
+            else if (index < __currentIndex)
                 pageLoader.item.close()
         }
     }

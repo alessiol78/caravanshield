@@ -49,25 +49,121 @@
 ****************************************************************************/
 
 import QtQuick 2.5
+import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.3
 
 GamePage {
 
+    function init() {
+        opacity = 1.0
+    }
+
+    Rectangle {
+        id: viewContainer
+        anchors.top: parent.top
+        anchors.bottom: saveButton.top
+        anchors.topMargin: GameSettings.fieldMargin + messageHeight
+        anchors.bottomMargin: GameSettings.fieldMargin
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width - GameSettings.fieldMargin*2
+        color: GameSettings.viewColor
+        radius: GameSettings.buttonRadius
+
+
+        Text {
+            id: title
+            width: parent.width
+            height: GameSettings.fieldHeight
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            color: GameSettings.textColor
+            font.pixelSize: GameSettings.mediumFontSize
+            text: qsTr("CONFIGURE")
+
+            BottomLine {
+                height: 1;
+                width: parent.width
+                color: "#898989"
+            }
+        }
+
+        ListModel {
+            id: configModel
+
+            ListElement {
+                name: "Gain I alim"
+                ivalue: 0.2 //deviceHandler.config.a_valim.toPrecision(6)
+            }
+            ListElement {
+                name: "Gain I motor"
+                ivalue: 3.25
+            }
+            ListElement {
+                name: "Gain V alim"
+                ivalue: 1.95
+            }
+        }
+
+        ListView {
+            id: params
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.top: title.bottom
+            model: configModel
+            clip: true
+
+            delegate: Rectangle {
+                id: box
+                height:GameSettings.fieldHeight * 1.2
+                width: parent.width
+                color: GameSettings.delegate1Color
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        /*deviceFinder.connectToService(modelData.deviceAddress);
+                        app.showPage("Measure.qml")*/
+                    }
+                }
+
+                StatsLabel {
+                    title: name
+                    value: ivalue
+                }
+            }
+        }
+    }
+
+    GameButton {
+        id: saveButton
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: GameSettings.fieldMargin
+        width: viewContainer.width
+        height: GameSettings.fieldHeight
+        //enabled: !deviceFinder.scanning
+        //onClicked: deviceFinder.startSearch()
+
+        Text {
+            anchors.centerIn: parent
+            font.pixelSize: GameSettings.tinyFontSize
+            text: qsTr("SAVE")
+            color: saveButton.enabled ? GameSettings.textColor : GameSettings.disabledTextColor
+        }
+    }
+
+    /*
     Column {
         anchors.centerIn: parent
         width: parent.width
 
         Text {
+            id: titleText
             anchors.horizontalCenter: parent.horizontalCenter
             font.pixelSize: GameSettings.hugeFontSize
             color: GameSettings.textColor
             text: qsTr("CONFIGURE")
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            font.pixelSize: GameSettings.giganticFontSize*3
-            color: GameSettings.textColor
-            text: (deviceHandler.maxHR - deviceHandler.minHR).toFixed(0)
         }
 
         Item {
@@ -75,25 +171,85 @@ GamePage {
             width: 1
         }
 
-        StatsLabel {
-            title: qsTr("MIN")
-            value: deviceHandler.minHR.toFixed(0)
-        }
+        Flickable {
+            anchors.fill: parent
+            contentWidth: viewport.width
+            contentHeight: labelsColumn.height + GameSettings.fieldHeight * 1.5
+            ScrollView {
+                id: scrollView
+                width: Math.min(content.width + 2*GameSettings.fieldMargin, appWindow.width);
+                height: Math.min(content.height, appWindow.height);
 
-        StatsLabel {
-            title: qsTr("MAX")
-            value: deviceHandler.maxHR.toFixed(0)
-        }
+                Item {
+                    id: content
+                    width: titleText.width
+                    height: 14*GameSettings.fieldHeight
 
-        StatsLabel {
-            title: qsTr("AVG")
-            value: deviceHandler.average.toFixed(1)
-        }
+                    ColumnLayout {
+                        id: labelsColumn
+                        anchors.fill: parent
+                        anchors.centerIn: parent
+                        anchors.margins: GameSettings.fieldMargin
+                        //width: parent.width
 
+                        StatsLabel {
+                            title: qsTr("Gain VBat")
+                            value: deviceHandler.config.a_vbatsrv.toFixed(2)
+                        }
 
-        StatsLabel {
-            title: qsTr("CALORIES")
-            value: deviceHandler.calories.toFixed(3)
+                        StatsLabel {
+                            title: qsTr("Gain VSol")
+                            value: deviceHandler.config.a_voutsol.toFixed(2)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Gain Valim")
+                            value: deviceHandler.config.a_valim.toFixed(2)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Gain Ialim")
+                            value: deviceHandler.config.a_ialim.toFixed(3)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Gain Imotor")
+                            value: deviceHandler.config.a_imotor.toFixed(3)
+                        }
+
+                        //---
+                        StatsLabel {
+                            title: qsTr("Threashold (H) VSol")
+                            value: deviceHandler.config.thr_vsol_h.toFixed(2)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Threashold (L) VSol")
+                            value: deviceHandler.config.thr_vsol_l.toFixed(2)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Threashold (H) VBat")
+                            value: deviceHandler.config.thr_vbat_h.toFixed(2)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Threashold (L) VBat")
+                            value: deviceHandler.config.thr_vbat_l.toFixed(3)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Threashold (H) Valim")
+                            value: deviceHandler.config.thr_valim_h.toFixed(3)
+                        }
+
+                        StatsLabel {
+                            title: qsTr("Threashold (L) Valim")
+                            value: deviceHandler.config.thr_valim_l.toFixed(3)
+                        }
+                    }
+                }
+            }
         }
-    }
+    }*/
 }

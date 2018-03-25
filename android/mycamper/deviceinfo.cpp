@@ -48,7 +48,7 @@
 **
 ****************************************************************************/
 
-#include "heartrate-global.h"
+#include "mycamper-global.h"
 #include "deviceinfo.h"
 #include <QBluetoothAddress>
 #include <QBluetoothUuid>

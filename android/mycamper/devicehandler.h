@@ -118,6 +118,7 @@ public:
         return *this;
     }
 };
+Q_DECLARE_METATYPE(ConfMeasures)
 
 class DeviceHandler : public BluetoothBaseClass
 {
@@ -132,7 +133,7 @@ class DeviceHandler : public BluetoothBaseClass
     Q_PROPERTY(bool relayOn READ relayOn NOTIFY statsChanged)
     Q_PROPERTY(int time READ time NOTIFY statsChanged)
     Q_PROPERTY(AddressType addressType READ addressType WRITE setAddressType)
-    Q_PROPERTY(ConfMeasures config READ config WRITE setConfig NOTIFY configChanged)
+    Q_PROPERTY(ConfMeasures config READ config NOTIFY configChanged)
 
 public:
     enum class AddressType {
@@ -164,6 +165,7 @@ signals:
     void measuringChanged();
     void aliveChanged();
     void statsChanged();
+    void configChanged();
 
 public slots:
     void startMeasurement();

@@ -69,7 +69,7 @@ Item {
         color: GameSettings.textColor
     }
 
-    Text {
+    TextInput {
         id: rightText
         anchors.right: parent.right
         height: parent.height

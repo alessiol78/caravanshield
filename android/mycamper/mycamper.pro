@@ -10,14 +10,16 @@ HEADERS += \
     devicefinder.h \
     devicehandler.h \
     bluetoothbaseclass.h \
-    mycamper-global.h
+    mycamper-global.h \
+    confitem.h
 
 SOURCES += main.cpp \
     connectionhandler.cpp \
     deviceinfo.cpp \
     devicefinder.cpp \
     devicehandler.cpp \
-    bluetoothbaseclass.cpp
+    bluetoothbaseclass.cpp \
+    confitem.cpp
 
 RESOURCES += qml.qrc \
     images.qrc

@@ -51,7 +51,7 @@
 #ifndef DEVICEFINDER_H
 #define DEVICEFINDER_H
 
-#include "heartrate-global.h"
+#include "mycamper-global.h"
 #include "bluetoothbaseclass.h"
 
 #include <QTimer>
