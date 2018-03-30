@@ -90,6 +90,44 @@ GamePage {
         ListModel {
             id: configModel
 
+            //-- threashold
+            ListElement {
+                name: "Thr Vbat H"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Thr Vbat L"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Thr Vsol H"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Thr Vsol L"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Thr Valim H"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Thr Valim L"
+                ivalue: 0
+            }
+            //-- gain
+            ListElement {
+                name: "Gain V bat"
+                ivalue: 0.2 //deviceHandler.config.a_valim.toPrecision(6)
+            }
+            ListElement {
+                name: "Gain V sol"
+                ivalue: 3.25
+            }
+            ListElement {
+                name: "Gain V alim"
+                ivalue: 1.95
+            }
             ListElement {
                 name: "Gain I alim"
                 ivalue: 0.2 //deviceHandler.config.a_valim.toPrecision(6)
@@ -98,9 +136,38 @@ GamePage {
                 name: "Gain I motor"
                 ivalue: 3.25
             }
+            //-- ntc
             ListElement {
-                name: "Gain V alim"
-                ivalue: 1.95
+                name: "Coeff A0 NTC 1"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A1 NTC 1"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A2 NTC 1"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A3 NTC 1"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A0 NTC 2"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A1 NTC 2"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A2 NTC 2"
+                ivalue: 0
+            }
+            ListElement {
+                name: "Coeff A3 NTC 2"
+                ivalue: 0
             }
         }
 

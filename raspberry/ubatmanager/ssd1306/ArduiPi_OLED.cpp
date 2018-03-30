@@ -41,6 +41,8 @@ extern "C" {
 #include "glcdfont.c"
 }
 
+//#define I2C_SPOT
+
 bool ArduiPi_OLED::isOk()
 {
     return initialized;
@@ -217,6 +219,8 @@ bool ArduiPi_OLED::init(int8_t DC, int8_t RST, uint8_t OLED_TYPE)
     // Setup reset pin direction as output
     if(rst>=0) bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
 
+    complete_init();
+
     initialized = true;
     return true;
 }
@@ -234,6 +238,8 @@ bool ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE)
 
     // Setup reset pin direction as output
     if(rst>=0) bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
+
+    complete_init();
 
     initialized = true;
     return true;
@@ -308,6 +314,8 @@ void ArduiPi_OLED::complete_init()
     }
 
     if(!begin()) return;
+
+    printf("ssd1306 complete_init..\n");
 
     if (oled_type == OLED_SEEED_I2C_96x96 )
         sendCommand(SSD1327_Set_Command_Lock, 0x12); // Unlock OLED driver IC MCU interface from entering command. i.e: Accept commands
@@ -412,10 +420,15 @@ void ArduiPi_OLED::complete_init()
     memset(poledbuff,0,oled_buff_size);
 
     // turn on oled panel
+    printf("ssd1306 turn on panel...\n");
     sendCommand(SSD_Display_On);
 
     // wait 100ms
     usleep(100000);
+
+#ifdef I2C_SPOT
+    release();
+#endif
 }
 
 void ArduiPi_OLED::close( void )
@@ -442,13 +455,17 @@ void ArduiPi_OLED::close( void )
 bool ArduiPi_OLED::begin( void )
 {
     if( isI2C() ) {
+        printf("i2c begin addr: 0x%02x.\n",_i2c_addr);
+
         // Init & Configure Raspberry PI I2C
         bcm2835_i2c_begin();
         bcm2835_i2c_setSlaveAddress(_i2c_addr);
 
         // Set clock to 400 KHz
         // does not seem to work, will check this later
-        // bcm2835_i2c_set_baudrate(400000);
+        bcm2835_i2c_set_baudrate(400000);
+
+        usleep(50000);
 
     }
     return true;
@@ -457,14 +474,19 @@ bool ArduiPi_OLED::begin( void )
 void ArduiPi_OLED::release( void )
 {
     // Release Raspberry I2C
-    if ( isI2C() )
+    if ( isI2C() ) {
+        printf("i2c release.\n");
         bcm2835_i2c_end();
+    }
 }
 
 void ArduiPi_OLED::setSeedTextXY(uint8_t Row, uint8_t Column)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     //Column Address
     sendCommand(0x15);             /* Set Column Address */
     sendCommand(0x08+(Column*4));  /* Start Column: Start from 8 */
@@ -473,8 +495,9 @@ void ArduiPi_OLED::setSeedTextXY(uint8_t Row, uint8_t Column)
     sendCommand(0x75);             /* Set Row Address */
     sendCommand(0x00+(Row*8));     /* Start Row*/
     sendCommand(0x07+(Row*8));     /* End Row*/
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 void ArduiPi_OLED::putSeedChar(char C, uint8_t grayH, uint8_t grayL)
@@ -483,9 +506,11 @@ void ArduiPi_OLED::putSeedChar(char C, uint8_t grayH, uint8_t grayL)
     {
         C=' '; //Space
     }
-
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     for(int i=0;i<8;i=i+2)
     {
         for(int j=0;j<8;j++)
@@ -500,8 +525,9 @@ void ArduiPi_OLED::putSeedChar(char C, uint8_t grayH, uint8_t grayL)
             sendData(c);
         }
     }
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 void ArduiPi_OLED::putSeedString(const char *String, uint8_t grayH, uint8_t grayL)
@@ -514,27 +540,60 @@ void ArduiPi_OLED::putSeedString(const char *String, uint8_t grayH, uint8_t gray
     }
 }
 
+// http://asf.atmel.com/bugzilla/show_bug.cgi?id=3236
+void ArduiPi_OLED::setRotation(uint8_t type)
+{
+    switch (type) {
+    case 1:
+        sendCommand(0xA0);
+        sendCommand(0xC0);
+        break;
+    case 2:
+        sendCommand(0xA0);
+        sendCommand(0xC8);
+        break;
+    case 3:
+        sendCommand(0xA1);
+        sendCommand(0xC0);
+        break;
+    case 4:
+        sendCommand(0xA1);
+        sendCommand(0xC8);
+        break;
+    default:
+        break;
+    }
+}
+
 void ArduiPi_OLED::setBrightness(uint8_t Brightness)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     sendCommand(SSD_Set_ContrastLevel);
     sendCommand(Brightness);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 
 void ArduiPi_OLED::invertDisplay(uint8_t i) 
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     if (i)
         sendCommand(SSD_Inverse_Display);
     else
         sendCommand(oled_type==OLED_SEEED_I2C_96x96 ? SSD1327_Normal_Display : SSD1306_Normal_Display);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 void ArduiPi_OLED::sendCommand(uint8_t c) 
@@ -623,8 +682,11 @@ void ArduiPi_OLED::sendCommand(uint8_t c0, uint8_t c1, uint8_t c2)
 // display.scrollright(0x00, 0x0F) 
 void ArduiPi_OLED::startscrollright(uint8_t start, uint8_t stop)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     sendCommand(SSD_Right_Horizontal_Scroll);
     sendCommand(0X00);
     sendCommand(start);
@@ -633,8 +695,9 @@ void ArduiPi_OLED::startscrollright(uint8_t start, uint8_t stop)
     sendCommand(0X01);
     sendCommand(0XFF);
     sendCommand(SSD_Activate_Scroll);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 // startscrollleft
@@ -643,8 +706,11 @@ void ArduiPi_OLED::startscrollright(uint8_t start, uint8_t stop)
 // display.scrollright(0x00, 0x0F) 
 void ArduiPi_OLED::startscrollleft(uint8_t start, uint8_t stop)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     sendCommand(SSD_Left_Horizontal_Scroll);
     sendCommand(0X00);
     sendCommand(start);
@@ -653,8 +719,9 @@ void ArduiPi_OLED::startscrollleft(uint8_t start, uint8_t stop)
     sendCommand(0X01);
     sendCommand(0XFF);
     sendCommand(SSD_Activate_Scroll);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 // startscrolldiagright
@@ -663,8 +730,11 @@ void ArduiPi_OLED::startscrollleft(uint8_t start, uint8_t stop)
 // display.scrollright(0x00, 0x0F) 
 void ArduiPi_OLED::startscrolldiagright(uint8_t start, uint8_t stop)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     sendCommand(SSD1306_SET_VERTICAL_SCROLL_AREA);
     sendCommand(0X00);
     sendCommand(oled_height);
@@ -675,8 +745,9 @@ void ArduiPi_OLED::startscrolldiagright(uint8_t start, uint8_t stop)
     sendCommand(stop);
     sendCommand(0X01);
     sendCommand(SSD_Activate_Scroll);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 // startscrolldiagleft
@@ -685,8 +756,11 @@ void ArduiPi_OLED::startscrolldiagright(uint8_t start, uint8_t stop)
 // display.scrollright(0x00, 0x0F) 
 void ArduiPi_OLED::startscrolldiagleft(uint8_t start, uint8_t stop)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     sendCommand(SSD1306_SET_VERTICAL_SCROLL_AREA);
     sendCommand(0X00);
     sendCommand(oled_height);
@@ -697,15 +771,19 @@ void ArduiPi_OLED::startscrolldiagleft(uint8_t start, uint8_t stop)
     sendCommand(stop);
     sendCommand(0X01);
     sendCommand(SSD_Activate_Scroll);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 
 void ArduiPi_OLED::setHorizontalScrollProperties(bool direction,uint8_t startRow, uint8_t endRow,uint8_t startColumn, uint8_t endColumn, uint8_t scrollSpeed)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     if(Scroll_Right == direction)
     {
         //Scroll Right
@@ -723,17 +801,22 @@ void ArduiPi_OLED::setHorizontalScrollProperties(bool direction,uint8_t startRow
     sendCommand(startColumn+8);
     sendCommand(endColumn+8);
     sendCommand(0x00);      //Dummmy byte
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 void ArduiPi_OLED::stopscroll(void)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     sendCommand(SSD_Deactivate_Scroll);
-
+#ifdef I2C_SPOT
     release();
+#endif
 }
 
 void ArduiPi_OLED::sendData(uint8_t c) 
@@ -764,8 +847,11 @@ void ArduiPi_OLED::sendData(uint8_t c)
 
 void ArduiPi_OLED::display(Adafruit_GFX *frame_buff)
 {
+#ifdef I2C_SPOT
     if(!begin()) return;
-
+#else
+    if(!initialized) return;
+#endif
     if (oled_type == OLED_SEEED_I2C_96x96 )
     {
         sendCommand(SSD1327_Set_Row_Address   , 0x00, 0x5F);
@@ -845,7 +931,9 @@ void ArduiPi_OLED::display(Adafruit_GFX *frame_buff)
             }
         }
     }
-
+#ifdef I2C_SPOT
+    usleep(50000);
     release();
+#endif
 }
 

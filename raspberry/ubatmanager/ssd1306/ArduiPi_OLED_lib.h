@@ -57,7 +57,7 @@
 #define OLED_LAST_OLED            7 /* always last type, used in code to end array */
 
 
-static const char * oled_type_str[] = {
+/* static const char * oled_type_str[] = {
     "Adafruit SPI 128x32",
     "Adafruit SPI 128x64",
     "Adafruit I2C 128x32",
@@ -65,7 +65,7 @@ static const char * oled_type_str[] = {
     "Seeed I2C 128x64",
     "Seeed I2C 96x96",
     "SH1106 I2C 128x64"
-};
+};*/
 
 // Arduino Compatible Macro
 #define _BV(bit) (1 << (bit))

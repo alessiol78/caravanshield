@@ -17,7 +17,7 @@ class MainThread : public QThread
     Q_OBJECT
 
 public:
-    explicit MainThread(QObject *parent = nullptr);
+    explicit MainThread(uint8_t rotation, QObject *parent = nullptr);
     ~MainThread();
     void esci();
     float v_bat_serv();

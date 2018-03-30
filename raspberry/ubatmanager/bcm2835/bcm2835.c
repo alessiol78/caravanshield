@@ -66,16 +66,12 @@ uint32_t bcm2835_peri_read(volatile uint32_t* paddr)
     if (debug)
     {
         printf("bcm2835_peri_read  paddr %08X\n", (unsigned) paddr);
-        return 0;
     }
-    else
-    {
-        // Make sure we dont return the _last_ read which might get lost
-        // if subsequent code changes to a different peripheral
-        uint32_t ret = *paddr;
-        *paddr; // Read without assigneing to an unused variable
-        return ret;
-    }
+    // Make sure we dont return the _last_ read which might get lost
+    // if subsequent code changes to a different peripheral
+    uint32_t ret = *paddr;
+    *paddr; // Read without assigneing to an unused variable
+    return ret;
 }
 
 // read from peripheral without the read barrier
@@ -84,12 +80,8 @@ uint32_t bcm2835_peri_read_nb(volatile uint32_t* paddr)
     if (debug)
     {
         printf("bcm2835_peri_read_nb  paddr %08X\n", (unsigned) paddr);
-        return 0;
     }
-    else
-    {
-        return *paddr;
-    }
+    return *paddr;
 }
 
 // safe write to peripheral
@@ -762,6 +754,23 @@ uint8_t bcm2835_i2c_write(const char * buf, uint32_t len)
     }
 
     bcm2835_peri_set_bits(control, BCM2835_BSC_S_DONE , BCM2835_BSC_S_DONE);
+
+    switch (reason) {
+    case BCM2835_I2C_REASON_ERROR_NACK:
+        printf("ERROR: I2C - NACK\n");
+        break;
+    case BCM2835_I2C_REASON_ERROR_CLKT:
+        printf("ERROR: I2C - CLKT\n");
+        break;
+    case BCM2835_I2C_REASON_ERROR_DATA:
+        printf("ERROR: I2C - DATA\n");
+        break;
+    case 0:
+        break;
+    default:
+        printf("ERROR: I2C - 0x%02x\n",reason);
+        break;
+    };
 
     return reason;
 }

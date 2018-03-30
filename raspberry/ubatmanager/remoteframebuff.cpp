@@ -25,7 +25,15 @@ void RemoteFrameBuff::sendFB(const uint8_t *data, const int size)
     sock.connectToHost(rem_ip,rem_port);
     if(!sock.waitForConnected(3000)) return;
     QByteArray qb;
-    qb.append( QByteArray::fromRawData((const char*)data, size).toBase64() );
+#if 1
+    int _width = 128/8; int _height=64;
+    //qDebug("rotate!!!");
+    uint8_t tmpbuf[size];
+    for(int n=_height-1, i=0;n>=0;n--,i++)
+    { memcpy(&tmpbuf[n*_width],&data[i*_width],_width); }
+    uint8_t *p = tmpbuf;
+#endif
+    qb.append( QByteArray::fromRawData((const char*)p, size).toBase64() );
     uint8_t bsize[2];
     bsize[0] = (qb.size() >> 8) &0xff;
     bsize[1] = qb.size() & 0xff;

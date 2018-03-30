@@ -16,9 +16,10 @@ static const int pin_btn1 = RPI_V3_GPIO_P1_38;
 static const int pin_btn2 = RPI_V3_GPIO_P1_40;
 #endif
 
-DisplayThread::DisplayThread(unsigned short num_pages, QObject *parent)
+DisplayThread::DisplayThread(unsigned short num_pages, uint8_t rotation_type, QObject *parent)
     : QThread(parent)
 {
+    rotation = rotation_type;
     initdone = false;
     btstate = "--";
     exitloop = false;
@@ -26,7 +27,6 @@ DisplayThread::DisplayThread(unsigned short num_pages, QObject *parent)
     {
         pages.append(new Adafruit_GFX);
     }
-
 }
 
 bool DisplayThread::isInitialized()
@@ -94,6 +94,9 @@ void DisplayThread::run()
         return;
     }
 
+#ifdef __arm__
+    display.setRotation(rotation);
+#endif
     mtx.lock();
     initdone = true;
     mtx.unlock();

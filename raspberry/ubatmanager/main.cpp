@@ -39,7 +39,14 @@ int main(int argc, char *argv[])
     sigaction(SIGINT, &term, NULL);
     sigaction(SIGSEGV, &term, NULL);
 
-    MainThread thrd;
+    int n = -1;
+    if(argc>1)
+    {
+        n = atoi(argv[1]);
+    }
+    qDebug("rotation: %d",n);
+
+    MainThread thrd(n);
     thrd.start();
 
     gMainThrd = &thrd;

@@ -21,11 +21,11 @@ static const int pin_aux1 = RPI_V3_GPIO_P1_36;  // 16
 
 #define GRAPH_FORMAT  LINE_FORMAT
 
-MainThread::MainThread(QObject *parent)
+MainThread::MainThread(uint8_t rotation, QObject *parent)
     : QThread(parent),
       bluetooth(new BTmanager(true)),
 //      #ifdef __arm__
-      dthrd(new DisplayThread(4)),
+      dthrd(new DisplayThread(4, rotation)),
 //      #else
 //      dthrd(new QThread),
 //      #endif
@@ -118,7 +118,7 @@ void MainThread::run()
             for(int j=0;j<N;j++) {
                 measures[j] = adc.readChannel(i); // 10bit = 1024
                 mean += measures[j];
-                usleep(50000);
+                usleep(20000);
             }
             mean = mean / N;
             //std::cout << i << ": " << mean << std::endl;
@@ -145,7 +145,7 @@ void MainThread::run()
         std::cout << "i ali: " << gm.i_alim << std::endl;
         std::cout << "ntc 1: " << gm.ntc_1 << std::endl;
         std::cout << "ntc 2: " << gm.ntc_2 << std::endl;
-
+        std::cout << "relay: " << out_relay << std::endl;
         std::cout << "-----------------" << std::endl;
         if(gm.v_out_sol > conf.thr_vsol_h)
         {
@@ -160,17 +160,15 @@ void MainThread::run()
 
         if(gm.v_alim > conf.thr_valim_h)
         {
-#ifdef __arm__
             // engine start and start recharge battery request
-            bcm2835_gpio_clr(pin_relay);
-#endif
+            out_relay = 0;
             std::cout << "engine: RUN" << std::endl;
         }
         else if(gm.v_alim < conf.thr_valim_l)
         {
+            out_relay = 1;
 #ifdef __arm__
             // low voltage protection
-            bcm2835_gpio_set(pin_relay);
             bcm2835_gpio_set(pin_aux1);
 #endif
             buzz.playBeep();
@@ -180,6 +178,13 @@ void MainThread::run()
         {
             std::cout << "battery: CHARGING" << std::endl;
         }
+
+#ifdef __arm__
+        if(out_relay)
+            bcm2835_gpio_set(pin_relay);
+        else
+            bcm2835_gpio_clr(pin_relay);
+#endif
 
         if(bluetooth->isRunning()) {
             bluetooth->updateMeasures(&gm);

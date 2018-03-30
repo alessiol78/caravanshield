@@ -13,7 +13,7 @@ class DisplayThread : public QThread
     Q_OBJECT
 
 public:
-    explicit DisplayThread(unsigned short num_pages, QObject *parent = 0);
+    explicit DisplayThread(unsigned short num_pages, uint8_t rotation_type, QObject *parent = 0);
     bool waitForInit(int timeout = 3000);
     bool isInitialized();
     void setBTstate(const QString &state);
@@ -30,6 +30,7 @@ private:
     QString btstate;
     bool exitloop;
     bool initdone;
+    uint8_t rotation;
 };
 
 #endif // DISPLAYTHREAD_H

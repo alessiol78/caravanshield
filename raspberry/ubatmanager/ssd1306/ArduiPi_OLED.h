@@ -169,6 +169,7 @@ public:
     void setSeedTextXY(uint8_t Row, uint8_t Column);
     void putSeedChar(char C, uint8_t grayH, uint8_t grayL);
     void putSeedString(const char *String, uint8_t grayH, uint8_t grayL);
+    void setRotation(uint8_t type);
 
     int16_t getOledWidth(void);
     int16_t getOledHeight(void);

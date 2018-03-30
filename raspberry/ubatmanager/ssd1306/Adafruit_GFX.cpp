@@ -709,6 +709,7 @@ void Adafruit_GFX::setGrayLevel(uint8_t grayLevel)
 
 void Adafruit_GFX::invertDisplay(bool i)
 {
+    (void)i;
     // do nothing, can be subclassed
 }
 
