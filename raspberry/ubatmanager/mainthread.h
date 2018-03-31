@@ -41,6 +41,9 @@ private:
     BTmanager *bluetooth;
     QThread *dthrd; // Display thread
     int out_relay;
+    int out_solar;
+    int bat_recharge;
+    int engine_run;
     NTC_library *ntc1;
     NTC_library *ntc2;
     ConfMeasures conf;

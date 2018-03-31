@@ -544,7 +544,7 @@ void ArduiPi_OLED::putSeedString(const char *String, uint8_t grayH, uint8_t gray
 void ArduiPi_OLED::setRotation(uint8_t type)
 {
     switch (type) {
-    case 1:
+    case 1: //180 degree
         sendCommand(0xA0);
         sendCommand(0xC0);
         break;

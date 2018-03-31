@@ -121,7 +121,9 @@ void MainThread::run()
                 usleep(20000);
             }
             mean = mean / N;
-            //std::cout << i << ": " << mean << std::endl;
+#ifdef DEBUG
+            std::cout << i << ": " << mean << std::endl;
+#endif
             //---- i-channel
             vadc[i] = mean;
             //-------
@@ -146,45 +148,97 @@ void MainThread::run()
         std::cout << "ntc 1: " << gm.ntc_1 << std::endl;
         std::cout << "ntc 2: " << gm.ntc_2 << std::endl;
         std::cout << "relay: " << out_relay << std::endl;
+        std::cout << "engin: " << engine_run << std::endl;
+        std::cout << "solar: " << out_solar << std::endl;
+        std::cout << "charg: " << bat_recharge << std::endl;
         std::cout << "-----------------" << std::endl;
+
+        //****  SOLAR  ****
         if(gm.v_out_sol > conf.thr_vsol_h)
         {
             // solar power is good
+            out_solar = 1;
+#ifdef DEBUG
             std::cout << "solar: ok" << std::endl;
+#endif
         }
         else if(gm.v_out_sol < conf.thr_vsol_l)
         {
             // solar power not usable
+            out_solar = 0;
+#ifdef DEBUG
             std::cout << "solar: TOO LOW" << std::endl;
+#endif
         }
 
+        //****  VALIM  ****
         if(gm.v_alim > conf.thr_valim_h)
         {
             // engine start and start recharge battery request
-            out_relay = 0;
+            engine_run = 1;
+#ifdef DEBUG
             std::cout << "engine: RUN" << std::endl;
+#endif
         }
         else if(gm.v_alim < conf.thr_valim_l)
         {
-            out_relay = 1;
+            // engine shutdown
+            engine_run = 0;
+#ifdef DEBUG
+            std::cout << "engine: OFF" << std::endl;
+#endif
+        }
+
+        //****  SERVICE BATTERY  ****
+        if(gm.v_bat_serv > conf.thr_vbat_h)
+        {
+            // service battery recharge
+            bat_recharge = 1;
+#ifdef DEBUG
+            std::cout << "battery: CHARGING" << std::endl;
+#endif
+        }
+        else if(gm.v_bat_serv < conf.thr_vbat_l)
+        {
+            // service battery discharge
+            bat_recharge = 0;
+#ifdef DEBUG
+            std::cout << "battery: DISCHARGE" << std::endl;
+#endif
+        }
+
+        //--------------------------------
+        // *** DRIVE RELAY STRATEGY ***
+        //--------------------------------
+
+
+        (bat_recharge || engine_run || !out_solar) ? out_relay = 0 : out_relay = 1;
+
+
+        //------ BATTERY PROTECTION ------
+        if(gm.v_alim < 10.0f)
+        {
+            out_relay = 1; // FORCE solar input for disconnect service battery
 #ifdef __arm__
             // low voltage protection
             bcm2835_gpio_set(pin_aux1);
 #endif
             buzz.playBeep();
-            std::cout << "engine: VOLT too LOW" << std::endl;
+            std::cout << "low bat protection: ON" << std::endl;
         }
-        if(gm.v_bat_serv > conf.thr_vbat_h)
+        else if(gm.v_alim > 11.0f)
         {
-            std::cout << "battery: CHARGING" << std::endl;
+            std::cout << "low bat protection: OFF" << std::endl;
         }
 
+        //======== RELAY DRIVE =========
 #ifdef __arm__
         if(out_relay)
             bcm2835_gpio_set(pin_relay);
         else
             bcm2835_gpio_clr(pin_relay);
 #endif
+        //==============================
 
         if(bluetooth->isRunning()) {
             bluetooth->updateMeasures(&gm);
