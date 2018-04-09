@@ -18,7 +18,8 @@ SOURCES += main.cpp \
     ntc_library.cpp \
     displaythread.cpp \
     beepbuzzer.cpp \
-    confmeasures.cpp
+    confmeasures.cpp \
+    lm75a/lm75temp.cpp
 
 HEADERS += \
     ssd1306/Adafruit_GFX.h \
@@ -29,7 +30,8 @@ HEADERS += \
     ntc_library.h \
     beepbuzzer.h \
     displaythread.h \
-    project.h
+    project.h \
+    lm75a/lm75temp.h
 
 contains(QT_ARCH, arm) {
 message( ARM version )

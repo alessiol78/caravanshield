@@ -7,6 +7,7 @@
 #include "bcm2835/bcm2835.h"
 #endif
 #include "displaythread.h"
+#include "lm75a/lm75temp.h"
 
 #include <iostream>
 #include <QSettings>
@@ -14,6 +15,7 @@
 #ifdef __arm__
 static const int pin_relay = RPI_V3_GPIO_P1_29; // 5
 static const int pin_aux1 = RPI_V3_GPIO_P1_36;  // 16
+static const int pin_aux2 = RPI_V3_GPIO_P1_35;  // 19
 #endif
 
 #define POINT_FORMAT 1
@@ -84,6 +86,7 @@ MainThread::~MainThread()
 void MainThread::run()
 {
     mcp3008Spi adc;
+    LM75temp temp_int;
 
     std::cout << "MainThread - RUN" << std::endl;
 
@@ -93,6 +96,11 @@ void MainThread::run()
 #ifdef __arm__
     bcm2835_gpio_fsel(pin_relay,BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(pin_aux1,BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(pin_aux2,BCM2835_GPIO_FSEL_OUTP);
+
+    bcm2835_gpio_clr(pin_relay);
+    bcm2835_gpio_clr(pin_aux1);
+    bcm2835_gpio_clr(pin_aux2);
 #endif
 
     reinterpret_cast<DisplayThread*>(dthrd)->waitForInit();
@@ -104,6 +112,9 @@ void MainThread::run()
         for(int i=0;i<sizefb.width()-8;i++)
             { graph_i.append(30); graph_v.append(60); }
     }
+
+    std::cout << "t_os_alarm: " << temp_int.getTos() << "°C" << std::endl;
+    std::cout << "t_os_hyst : " << temp_int.getThyst() << "°C" << std::endl;
 
     while(!exitloop)
     {
@@ -129,11 +140,13 @@ void MainThread::run()
             //-------
         }
 
+
         mtx.lock();
         gm.v_bat_serv = (float)vadc[0]*conf.a_vbatsrv;
         gm.v_out_sol = (float)vadc[1]*conf.a_voutsol;
         gm.i_alim = (float)(vadc[2]-512)*conf.a_ialim;
         gm.i_motor = (float)(vadc[3]-512)*conf.a_imotor;
+        gm.t_board = temp_int.getTemperature();
         gm.ntc_1 = (float)ntc1->fromAdc(vadc[4]);
         gm.ntc_2 = (float)ntc2->fromAdc(vadc[5]);
         gm.v_alim = (float)vadc[7]*conf.a_valim;
@@ -145,6 +158,7 @@ void MainThread::run()
                      gm.v_out_sol << " < " << conf.thr_vsol_h << std::endl;
         std::cout << "v ali: " << gm.v_alim << std::endl;
         std::cout << "i ali: " << gm.i_alim << std::endl;
+        std::cout << "t_brd: " << gm.t_board << std::endl;
         std::cout << "ntc 1: " << gm.ntc_1 << std::endl;
         std::cout << "ntc 2: " << gm.ntc_2 << std::endl;
         std::cout << "relay: " << out_relay << std::endl;

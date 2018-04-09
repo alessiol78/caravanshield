@@ -6,6 +6,7 @@ typedef struct {
     float v_out_sol;
     float i_alim;
     float i_motor;
+    float t_board;
     float ntc_1;
     float ntc_2;
     float v_alim;
