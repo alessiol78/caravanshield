@@ -1,16 +1,19 @@
 #include "lm75temp.h"
+#include "project.h"
 #include <QSettings>
 #ifdef __arm__
 extern "C" {
 #include "../bcm2835/bcm2835.h"
 }
-
-#define LM75_A0_PIN  RPI_V2_GPIO_P1_18
 #endif
+
+//#define DEBUG_LM75
 
 int twos_complement(unsigned input_value, uint8_t num_bits) {
     unsigned val = input_value >> (16-num_bits);
+#ifdef DEBUG_LM75
     printf("val: %04x\n",val);
+#endif
     // Calculates a two's complement integer from the given input value's bits
     unsigned mask = 0;
     for(int i=0;i<(num_bits - 1);i++) mask |= (1<<i);
@@ -20,7 +23,6 @@ int twos_complement(unsigned input_value, uint8_t num_bits) {
 LM75temp::LM75temp(QObject *parent) : QObject(parent)
 {
 #ifdef __arm__
-    const int pin_a0 = LM75_A0_PIN;
     bcm2835_gpio_fsel(pin_a0,BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_clr(pin_a0); // tied to ground
 #endif
@@ -63,7 +65,9 @@ float LM75temp::getTos()
 {
     float rv = -300.0f;
     int raw = -twos_complement( readRegister16(0x03), 9);
+#ifdef DEBUG_LM75
     printf("raw: %d\n", raw);
+#endif
     if(raw!=0xffff)
     { rv = (float)(raw * 0.5f); }
     return rv;
@@ -73,7 +77,9 @@ float LM75temp::getThyst()
 {
     float rv = -300.0f;
     int raw = -twos_complement( readRegister16(0x02), 9);
+#ifdef DEBUG_LM75
     printf("raw: %d\n", raw);
+#endif
     if(raw!=0xffff)
     { rv = (float)(raw * 0.5f); }
     return rv;
@@ -83,7 +89,9 @@ float LM75temp::readTemp()
 {
     float rv = -300.0f;
     int raw = -twos_complement( readRegister16(0x00), 11);
+#ifdef DEBUG_LM75
     printf("raw: %d\n", raw);
+#endif
     if(raw!=0xffff)
     { rv = (float)(raw * 0.125f); }
     return rv;
@@ -111,9 +119,9 @@ quint8 LM75temp::readRegister8(uint8_t reg, bool *ok)
     quint8 raw = 0x00;
     if(ok) *ok = true;
     rv = raw;
-    qDebug("reg: %03x",raw);
     rv = raw;
 #endif
+    qDebug("reg %02xh: %03x",reg,rv);
     return rv;
 }
 
@@ -150,8 +158,10 @@ quint16 LM75temp::readRegister16(uint8_t reg)
     }
     quint16 raw = (quint16)((buff[0]<<8) & 0xff00);
     raw |= buff[1] & 0x00ff;
-    qDebug("reg: %03x",raw);
     rv = raw;
+#endif
+#ifdef DEBUG_LM75
+    qDebug("reg %02xh: %04x",reg,rv);
 #endif
     return rv;
 }

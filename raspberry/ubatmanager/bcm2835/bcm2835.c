@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <error.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -757,18 +758,18 @@ uint8_t bcm2835_i2c_write(const char * buf, uint32_t len)
 
     switch (reason) {
     case BCM2835_I2C_REASON_ERROR_NACK:
-        printf("ERROR: I2C - NACK\n");
+        error(0,0,"ERROR: I2C - NACK");
         break;
     case BCM2835_I2C_REASON_ERROR_CLKT:
-        printf("ERROR: I2C - CLKT\n");
+        error(0,0,"ERROR: I2C - CLKT");
         break;
     case BCM2835_I2C_REASON_ERROR_DATA:
-        printf("ERROR: I2C - DATA\n");
+        error(0,0,"ERROR: I2C - DATA");
         break;
     case 0:
         break;
     default:
-        printf("ERROR: I2C - 0x%02x\n",reason);
+        error(0,0,"ERROR: I2C - 0x%02x",reason);
         break;
     };
 
@@ -1144,7 +1145,7 @@ static void *mapmem(const char *msg, size_t size, int fd, off_t off)
 {
     void *map = mmap(NULL, size, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, off);
     if (MAP_FAILED == map)
-        fprintf(stderr, "bcm2835_init: %s mmap failed: %s\n", msg, strerror(errno));
+        error(0,errno, "bcm2835_init: %s mmap failed", msg);
     return map;
 }
 
@@ -1175,8 +1176,7 @@ int bcm2835_init(void)
     // Open the master /dev/memory device
     if ((memfd = open("/dev/mem", O_RDWR | O_SYNC) ) < 0)
     {
-        fprintf(stderr, "bcm2835_init: Unable to open /dev/mem: %s\n",
-                strerror(errno)) ;
+        error(0,errno, "bcm2835_init: Unable to open /dev/mem") ;
         goto exit;
     }
 

@@ -1,11 +1,12 @@
 #include "beepbuzzer.h"
+#include "project.h"
 #ifdef __arm__
 #include "bcm2835/bcm2835.h"
 #endif
 #include <unistd.h>
 
 #ifdef __arm__
-static const int pin_out = RPI_V2_GPIO_P1_22;
+static const int pin_out = pin_aux2;
 #endif
 
 BeepBuzzer::BeepBuzzer(QObject *parent) : QObject(parent)

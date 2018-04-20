@@ -39,4 +39,15 @@ public:
     ConfMeasures& operator=(const ConfMeasures &o);
 };
 
+#ifdef __arm__
+#include "bcm2835/bcm2835.h"
+const int pin_relay = RPI_V3_GPIO_P1_29; // 5
+const int pin_aux1 = RPI_V3_GPIO_P1_36;  // 16
+const int pin_aux2 = RPI_V3_GPIO_P1_35;  // 19
+const int pin_buzz = RPI_V2_GPIO_P1_22;  // 25
+const int pin_btn1 = RPI_V3_GPIO_P1_38;  // 20
+const int pin_btn2 = RPI_V3_GPIO_P1_40;  // 21
+const int pin_a0 = RPI_V2_GPIO_P1_18;    // 24
+#endif
+
 #endif // PROJECT_H

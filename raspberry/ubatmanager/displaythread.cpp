@@ -1,4 +1,5 @@
 #include "displaythread.h"
+#include "project.h"
 #ifdef __arm__
 #include "ssd1306/ArduiPi_OLED.h"
 #include "ssd1306/ArduiPi_OLED_lib.h"
@@ -10,11 +11,6 @@
 #include <QTime>
 
 #include <iostream>
-
-#ifdef __arm__
-static const int pin_btn1 = RPI_V3_GPIO_P1_38;
-static const int pin_btn2 = RPI_V3_GPIO_P1_40;
-#endif
 
 DisplayThread::DisplayThread(unsigned short num_pages, uint8_t rotation_type, QObject *parent)
     : QThread(parent)

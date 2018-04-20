@@ -5,7 +5,7 @@
 
 /* By def. the app uses I2C address 0x48.
  * Solder pin A0, A1, A2 of LM75A to ground to use the def.addr */
-#define LM75_Address    0x48
+#define LM75_Address    0x48  // if A0 = to Vcc => 0x49 NOTE: fix constructor
 
 class LM75temp : public QObject
 {

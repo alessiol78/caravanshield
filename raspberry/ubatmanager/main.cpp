@@ -8,6 +8,29 @@
 
 MainThread *gMainThrd = NULL;
 
+void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    QByteArray localMsg = msg.toLocal8Bit();
+    switch (type) {
+    case QtDebugMsg:
+        //fprintf(stdout, "%s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        fprintf(stdout, "%s\n", localMsg.constData()); fflush(0);
+        break;
+    case QtInfoMsg:
+        fprintf(stderr, "Info: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtWarningMsg:
+        fprintf(stderr, "Warning: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtCriticalMsg:
+        fprintf(stderr, "Critical: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtFatalMsg:
+        fprintf(stderr, "Fatal: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        abort();
+    }
+}
+
 void signal_handler(int signum)
 {
     std::cout << "signum:" << signum << std::endl;
@@ -21,6 +44,7 @@ void signal_handler(int signum)
 
 int main(int argc, char *argv[])
 {
+    qInstallMessageHandler(myMessageOutput);
     QCoreApplication a(argc, argv);
 
 #ifdef __arm__

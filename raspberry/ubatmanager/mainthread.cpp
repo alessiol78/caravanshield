@@ -8,15 +8,11 @@
 #endif
 #include "displaythread.h"
 #include "lm75a/lm75temp.h"
-
+#ifdef __x86_64__
+#include <curses.h>
+#endif
 #include <iostream>
 #include <QSettings>
-
-#ifdef __arm__
-static const int pin_relay = RPI_V3_GPIO_P1_29; // 5
-static const int pin_aux1 = RPI_V3_GPIO_P1_36;  // 16
-static const int pin_aux2 = RPI_V3_GPIO_P1_35;  // 19
-#endif
 
 #define POINT_FORMAT 1
 #define LINE_FORMAT  2
@@ -31,7 +27,8 @@ MainThread::MainThread(uint8_t rotation, QObject *parent)
 //      #else
 //      dthrd(new QThread),
 //      #endif
-      out_relay(0), ntc1(new NTC_library),
+      out_relay(0), out_solar(0), bat_recharge(0),
+      engine_run(0), ntc1(new NTC_library),
       ntc2(new NTC_library), exitloop(false)
 {
     const float def_r27ksu10k = 0.018066406f;
@@ -63,12 +60,15 @@ MainThread::MainThread(uint8_t rotation, QObject *parent)
     { ntc2->calibrate(conf.ntc2_a0,conf.ntc2_a1,
                       conf.ntc2_a2,conf.ntc2_a3); }
 
-    conf.thr_vbat_l = sett.value("thr_vbat_l",11.0f).toFloat();
+    // threasholds for service battery recharge
+    conf.thr_vbat_l = sett.value("thr_vbat_l",13.5f).toFloat();
     conf.thr_vbat_h = sett.value("thr_vbat_h",14.0f).toFloat();
+    // threasholds for out solar good (with sun)
     conf.thr_vsol_l = sett.value("thr_vsol_l",12.4f).toFloat();
     conf.thr_vsol_h = sett.value("thr_vsol_h",13.0f).toFloat();
-    conf.thr_valim_l = sett.value("thr_valim_l",12.4f).toFloat();
-    conf.thr_valim_h = sett.value("thr_valim_h",13.0f).toFloat();
+    // threasholds for engine run
+    conf.thr_valim_l = sett.value("thr_valim_l",13.8f).toFloat();
+    conf.thr_valim_h = sett.value("thr_valim_h",14.0f).toFloat();
 
     bluetooth->start();
     bluetooth->updateConf(conf);
@@ -116,6 +116,27 @@ void MainThread::run()
     std::cout << "t_os_alarm: " << temp_int.getTos() << "°C" << std::endl;
     std::cout << "t_os_hyst : " << temp_int.getThyst() << "°C" << std::endl;
 
+#ifdef __x86_64__
+    WINDOW *mainwin = initscr();
+    if(mainwin) {
+        start_color();
+        if ( has_colors() && COLOR_PAIRS >= 13 ) {
+            init_pair(1,  COLOR_RED,     COLOR_BLACK);
+            init_pair(2,  COLOR_GREEN,   COLOR_BLACK);
+            init_pair(3,  COLOR_YELLOW,  COLOR_BLACK);
+            init_pair(4,  COLOR_BLUE,    COLOR_BLACK);
+            init_pair(5,  COLOR_MAGENTA, COLOR_BLACK);
+            init_pair(6,  COLOR_CYAN,    COLOR_BLACK);
+            init_pair(7,  COLOR_BLUE,    COLOR_WHITE);
+            init_pair(8,  COLOR_WHITE,   COLOR_RED);
+            init_pair(9,  COLOR_BLACK,   COLOR_GREEN);
+            init_pair(10, COLOR_BLUE,    COLOR_YELLOW);
+            init_pair(11, COLOR_WHITE,   COLOR_BLUE);
+            init_pair(12, COLOR_WHITE,   COLOR_MAGENTA);
+            init_pair(13, COLOR_BLACK,   COLOR_CYAN);
+        }
+    }
+#endif
     while(!exitloop)
     {
         const int NUM_CHANNELS = 8;
@@ -151,21 +172,69 @@ void MainThread::run()
         gm.ntc_2 = (float)ntc2->fromAdc(vadc[5]);
         gm.v_alim = (float)vadc[7]*conf.a_valim;
 
-        std::cout << "......................" << std::endl;
-        std::cout << "v bat: " << conf.thr_vbat_l << " < " <<
-                     gm.v_bat_serv << " < " << conf.thr_vbat_h << std::endl;
-        std::cout << "v sol: " << conf.thr_vsol_l << " < " <<
-                     gm.v_out_sol << " < " << conf.thr_vsol_h << std::endl;
-        std::cout << "v ali: " << gm.v_alim << std::endl;
-        std::cout << "i ali: " << gm.i_alim << std::endl;
-        std::cout << "t_brd: " << gm.t_board << std::endl;
-        std::cout << "ntc 1: " << gm.ntc_1 << std::endl;
-        std::cout << "ntc 2: " << gm.ntc_2 << std::endl;
-        std::cout << "relay: " << out_relay << std::endl;
-        std::cout << "engin: " << engine_run << std::endl;
-        std::cout << "solar: " << out_solar << std::endl;
-        std::cout << "charg: " << bat_recharge << std::endl;
-        std::cout << "-----------------" << std::endl;
+#ifdef __x86_64__
+        if(mainwin) {
+            char tmp[512]; int n = 1;
+            color_set(0, NULL);
+            mvaddstr(n++, 1, "......................");
+            if(bat_recharge) color_set(13, NULL);
+            else             color_set(0, NULL);
+            sprintf(tmp,"v bat: %.2f < %.2f < %.2f  ", conf.thr_vbat_l,
+                    gm.v_bat_serv, conf.thr_vbat_h);
+            mvaddstr(n++, 1, tmp);
+            if(out_solar) color_set(0, NULL);
+            else          color_set(1, NULL);
+            sprintf(tmp,"v sol: %.2f < %.2f < %.2f  ", conf.thr_vsol_l,
+                    gm.v_out_sol, conf.thr_vsol_h);
+            mvaddstr(n++, 1, tmp);
+            if(bat_recharge) color_set(0, NULL);
+            else             color_set(1, NULL);
+            sprintf(tmp,"v ali: %.2f < %.2f < %.2f  ", conf.thr_valim_l,
+                    gm.v_alim, conf.thr_valim_h);
+            mvaddstr(n++, 1, tmp);
+            color_set(0, NULL);
+            sprintf(tmp,"i ali: %.2f  ", gm.i_alim);
+            mvaddstr(n++, 1, tmp);
+            sprintf(tmp,"t_brd: %.2f  ", gm.t_board);
+            mvaddstr(n++, 1, tmp);
+            sprintf(tmp,"ntc 1: %.2f  ", gm.ntc_1);
+            mvaddstr(n++, 1, tmp);
+            sprintf(tmp,"ntc 2: %.2f  ", gm.ntc_2);
+            mvaddstr(n++, 1, tmp);
+            mvaddstr(n++, 1, "-----------------");
+            sprintf(tmp,"relay: %d", out_relay);
+            mvaddstr(n++, 1, tmp);
+            sprintf(tmp,"engin: %d", engine_run);
+            mvaddstr(n++, 1, tmp);
+            sprintf(tmp,"solar: %d", out_solar);
+            mvaddstr(n++, 1, tmp);
+            sprintf(tmp,"charg: %d", bat_recharge);
+            mvaddstr(n++, 1, tmp);
+
+            refresh();
+        }
+        else
+#endif
+        {
+            system("clear");
+            std::cout << "......................" << std::endl;
+            std::cout << "v bat: " << conf.thr_vbat_l << " < " <<
+                         gm.v_bat_serv << " < " << conf.thr_vbat_h << std::endl;
+            std::cout << "v sol: " << conf.thr_vsol_l << " < " <<
+                         gm.v_out_sol << " < " << conf.thr_vsol_h << std::endl;
+            std::cout << "v ali: " << conf.thr_valim_l << " < " <<
+                         gm.v_alim << " < " << conf.thr_valim_h << std::endl;
+            std::cout << "i ali: " << gm.i_alim << std::endl;
+            std::cout << "t_brd: " << gm.t_board << std::endl;
+            std::cout << "ntc 1: " << gm.ntc_1 << std::endl;
+            std::cout << "ntc 2: " << gm.ntc_2 << std::endl;
+            std::cout << "-----------------" << std::endl;
+            std::cout << "relay: " << out_relay << std::endl;
+            std::cout << "engin: " << engine_run << std::endl;
+            std::cout << "solar: " << out_solar << std::endl;
+            std::cout << "charg: " << bat_recharge << std::endl;
+            std::cout << "-----------------" << std::endl;
+        }
 
         //****  SOLAR  ****
         if(gm.v_out_sol > conf.thr_vsol_h)
@@ -238,11 +307,11 @@ void MainThread::run()
             bcm2835_gpio_set(pin_aux1);
 #endif
             buzz.playBeep();
-            std::cout << "low bat protection: ON" << std::endl;
+            if(!mainwin) std::cout << "low bat protection: ON" << std::endl;
         }
         else if(gm.v_alim > 11.0f)
         {
-            std::cout << "low bat protection: OFF" << std::endl;
+            if(!mainwin) std::cout << "low bat protection: OFF" << std::endl;
         }
 
         //======== RELAY DRIVE =========
@@ -359,6 +428,10 @@ void MainThread::run()
 #endif
         mtx.unlock();
     }
+
+    delwin(mainwin);
+    endwin();
+    refresh();
 
     bluetooth->stop();
 

@@ -47,9 +47,11 @@ HEADERS += \
     ssd1306/ArduiPi_OLED_lib.h
 }
 
+
 contains(QT_ARCH, x86_64) {
 message( PC version )
 QT += network
+LIBS += -lncurses
 
 SOURCES += \
     remoteframebuff.cpp
